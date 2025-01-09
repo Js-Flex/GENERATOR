@@ -323,4 +323,3 @@ if __name__ == "__main__":
     for i in range(thds):
         discord = Discord()
         threading.Thread(target=discord.begin).start()
-
