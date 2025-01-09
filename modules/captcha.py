@@ -10,22 +10,24 @@ import colorama
 
 class Captcha:
     @staticmethod
-    def solve(user_agent: str, api_key:str, proxy: str, service: str='capmonster', site_key: str="4c672d35-0701-42b2-88c3-78380b0db560", rq_data: str=None, max_retries: int=150) -> str|bool:
+    def solve(user_agent: str, api_key: str, proxy: str, service: str = 'razorcap', site_key: str = "4c672d35-0701-42b2-88c3-78380b0db560", rq_data: str = None, max_retries: int = 150) -> str|bool:
         custom = None
         headers = {
             'user-agent': "Mozilla"
         }
-        if service == "capmonster":
-            url = 'https://api.capmonster.cloud'
+
+        # RazorCap service
+        if service == "razorcap":
+            url = 'https://api.razorcap.xyz/create_task'
             payload = {
-                    "clientKey": api_key,
-                    "task":
-                    {
-                        "type":"HCaptchaTaskProxyless",
-                        "websiteURL":"https://discord.com/",
-                        "websiteKey": site_key,
-                        "userAgent": user_agent,
-                    }
+                "key": api_key,
+                "type": "hcaptcha_basic",  # can be 'hcaptcha_basic' or 'enterprise'
+                "data": {
+                    "sitekey": site_key,
+                    "siteurl": "discord.com",
+                    "proxy": proxy,
+                    "rqdata": rq_data if rq_data else ""
+                }
             }
         elif service == "capsolver":
             url = "https://api.capsolver.com"
@@ -103,20 +105,26 @@ class Captcha:
             Log.bad(f"Error Creating {service} Task")
             return None
         try:
-            
-            if service not in ['hcoptcha', '24captcha', 'fcaptcha']:
-                if r.json().get("taskId"):
-                    taskid = r.json()["taskId"]
+            if service == "razorcap":
+                # RazorCap doesn't return a taskId directly; we handle it here
+                if r.json().get("task_id"):
+                    taskid = r.json()["task_id"]
                 else:
                     Log.bad("Error getting captcha task id")
                     return None
             else:
-                if service == "24captcha":
+                if service not in ['hcoptcha', '24captcha', 'fcaptcha']:
+                    if r.json().get("taskId"):
+                        taskid = r.json()["taskId"]
+                    else:
+                        Log.bad("Error getting captcha task id")
+                        return None
+                elif service == "24captcha":
                     try:
                         taskid = r.text.split("|")[1]
                     except:
                         Log.bad("Error getting captcha task id")
-                        return None                 
+                        return None
                 elif service == 'fcaptcha':
                     taskid = r.json()['task']['task_id']
                 else:
@@ -128,16 +136,23 @@ class Captcha:
         except:
             Log.bad("Error getting captcha task id")
             return None
+
         for i in range(max_retries):
             try:
-                if service not in ['hcoptcha', '24captcha', 'fcaptcha']:
-                    r = requests.post(f"{url}/getTaskResult",json={"clientKey": api_key,"taskId":taskid})
-                    if r.json()["status"] == "ready":
-                        cap_pri = r.json()["solution"]["gRecaptchaResponse"][:35]
+                if service == "razorcap":
+                    r = requests.post(f"https://api.razorcap.xyz/get_task_data", json={"key": api_key, "task_id": taskid})
+                    if r.json().get("status") == "completed":
+                        cap_pri = r.json().get("solution")[:35]
                         Log.good(f"Solved captcha ({colorama.Fore.LIGHTBLACK_EX}{cap_pri}..{colorama.Fore.RESET})")
-                        return r.json()["solution"]["gRecaptchaResponse"]
+                        return r.json().get("solution")
                 else:
-                    if service == "24captcha":
+                    if service not in ['hcoptcha', '24captcha', 'fcaptcha']:
+                        r = requests.post(f"{url}/getTaskResult",json={"clientKey": api_key,"taskId":taskid})
+                        if r.json()["status"] == "ready":
+                            cap_pri = r.json()["solution"]["gRecaptchaResponse"][:35]
+                            Log.good(f"Solved captcha ({colorama.Fore.LIGHTBLACK_EX}{cap_pri}..{colorama.Fore.RESET})")
+                            return r.json()["solution"]["gRecaptchaResponse"]
+                    elif service == "24captcha":
                         payload = {
                             "key": api_key,
                             "id": taskid,
@@ -167,4 +182,3 @@ class Captcha:
                 return None
         Log.bad("Failed to solve captcha.", symbol="!")
         return None
-
