@@ -1,10 +1,10 @@
 {
     "license": "PqRqny-lN8xHU-i87Sy2-r57HjJ-6inB4r-etXyTg",
-    "captcha_service": "fcaptcha",
-    "captcha_api_key": "fCap",
+    "captcha_service": "razorcap",
+    "captcha_api_key": "9836c167-2f59-4a9f-b256-6f21d82b5b76",
     "random_username": true,
-    "password": "",
-    "invite": "",
+    "password": "NYfyugiho",
+    "invite": "reliableboosts",
     "display_title": true,
     "show_errors": true
 }
